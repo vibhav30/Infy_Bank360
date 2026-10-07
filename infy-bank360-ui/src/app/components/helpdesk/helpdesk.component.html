@@ -1,0 +1,162 @@
+<div class="container py-4">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+      <h2 class="fw-bold mb-1"><i class="bi bi-headset text-info me-2"></i>Customer Helpdesk & Service Desk</h2>
+      <p class="text-secondary mb-0">Module 5: Support ticketing, tracking ID triage, and customer closure (US-14, US-15, US-16)</p>
+    </div>
+    <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-3 py-2 rounded-pill">
+      Port 8086: service-request-service
+    </span>
+  </div>
+
+  <!-- Alert Banner -->
+  <div *ngIf="alertMessage" [class]="'alert alert-' + alertType + ' alert-dismissible fade show shadow-sm'" role="alert">
+    <i class="bi bi-info-circle me-2"></i>{{ alertMessage }}
+    <button type="button" class="btn-close" (click)="alertMessage = null"></button>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <!-- 1. Raise Support Ticket Form -->
+    <div class="col-lg-6">
+      <div class="card h-100 shadow-sm border-0 bg-white">
+        <div class="card-header bg-navy text-white py-3">
+          <h5 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2 text-info"></i>1. Raise Service Request / Dispute (US-14)</h5>
+        </div>
+        <div class="card-body p-4">
+          <form (ngSubmit)="createTicket()">
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Customer ID (CIF)</label>
+                <input type="number" class="form-control" [(ngModel)]="ticket.customerId" name="ticketCustId" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Category</label>
+                <select class="form-select" [(ngModel)]="ticket.category" name="ticketCat">
+                  <option value="TRANSACTION_DISPUTE">Transaction Dispute</option>
+                  <option value="CARD_REQUEST">Debit / Credit Card Request</option>
+                  <option value="ACCOUNT_ISSUE">Account Issue / Freeze</option>
+                  <option value="GENERAL_QUERY">General Banking Inquiry</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Subject / Title</label>
+              <input type="text" class="form-control" [(ngModel)]="ticket.subject" name="ticketSub" placeholder="Brief issue summary (min 5 chars)" minlength="5" required>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Detailed Description</label>
+              <textarea class="form-control" rows="4" [(ngModel)]="ticket.description" name="ticketDesc" placeholder="Describe the problem or inquiry in detail (min 10 chars)" minlength="10" required></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm">
+              <i class="bi bi-send-fill me-2"></i>Submit Support Request
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Track by Tracking ID -->
+    <div class="col-lg-6">
+      <div class="card h-100 shadow-sm border-0 bg-white">
+        <div class="card-header bg-navy text-white py-3">
+          <h5 class="mb-0 fw-semibold"><i class="bi bi-search me-2 text-info"></i>2. Ticket Status Lookup & Closure (US-16)</h5>
+        </div>
+        <div class="card-body p-4">
+          <div class="input-group mb-3">
+            <input type="text" class="form-control" placeholder="Enter Tracking ID (e.g. TCK-2026-10001)" [(ngModel)]="searchTrackingId">
+            <button class="btn btn-outline-primary" type="button" (click)="searchTicket()">
+              <i class="bi bi-search me-1"></i>Search
+            </button>
+          </div>
+
+          <div *ngIf="searchedTicket" class="card bg-light border-0 p-3 mt-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-bold fs-6 text-dark">{{ searchedTicket.trackingId }}</span>
+              <span class="badge" [ngClass]="{
+                'bg-warning-subtle text-warning-emphasis': searchedTicket.status === 'OPEN',
+                'bg-primary-subtle text-primary-emphasis': searchedTicket.status === 'IN_PROGRESS',
+                'bg-success-subtle text-success-emphasis': searchedTicket.status === 'RESOLVED',
+                'bg-secondary-subtle text-secondary-emphasis': searchedTicket.status === 'CLOSED'
+              }">{{ searchedTicket.status }}</span>
+            </div>
+            <div class="fw-semibold text-secondary small mb-1">Category: {{ searchedTicket.category }}</div>
+            <div class="fw-bold mb-2">{{ searchedTicket.subject }}</div>
+            <p class="text-muted small mb-3">{{ searchedTicket.description }}</p>
+
+            <div *ngIf="searchedTicket.resolutionNotes" class="p-3 bg-white rounded border mb-3">
+              <div class="small fw-bold text-success mb-1"><i class="bi bi-check-circle me-1"></i>Officer Resolution Notes:</div>
+              <div class="small text-dark">{{ searchedTicket.resolutionNotes }}</div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-success flex-grow-1" *ngIf="searchedTicket.status === 'RESOLVED'" (click)="closeTicket(searchedTicket.serviceRequestId)">
+                <i class="bi bi-check2-all me-1"></i>Accept & Close Ticket
+              </button>
+            </div>
+          </div>
+
+          <div *ngIf="!searchedTicket" class="text-center py-5 text-muted">
+            <i class="bi bi-ticket-perforated fs-1 text-secondary opacity-50 d-block mb-2"></i>
+            Search by Tracking ID to track status and review resolution remarks.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Employee Ticket Triage Queue -->
+  <div class="card shadow-sm border-0 bg-white">
+    <div class="card-header bg-navy text-white py-3 d-flex justify-content-between align-items-center">
+      <h5 class="mb-0 fw-semibold"><i class="bi bi-list-task me-2 text-info"></i>3. Service Desk Triage Queue (US-15)</h5>
+      <button class="btn btn-sm btn-outline-light" (click)="loadTickets()">
+        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+      </button>
+    </div>
+    <div class="card-body p-0 table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Tracking ID</th>
+            <th>Category</th>
+            <th>Subject</th>
+            <th>Status</th>
+            <th>Resolution Remarks</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let t of tickets">
+            <td class="fw-bold">{{ t.trackingId }}</td>
+            <td><span class="badge bg-secondary-subtle text-secondary-emphasis">{{ t.category }}</span></td>
+            <td class="fw-medium text-dark">{{ t.subject }}</td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'bg-warning-subtle text-warning-emphasis': t.status === 'OPEN',
+                'bg-primary-subtle text-primary-emphasis': t.status === 'IN_PROGRESS',
+                'bg-success-subtle text-success-emphasis': t.status === 'RESOLVED',
+                'bg-secondary-subtle text-secondary-emphasis': t.status === 'CLOSED'
+              }">{{ t.status }}</span>
+            </td>
+            <td class="small text-muted">{{ t.resolutionNotes || 'Awaiting review' }}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-success" *ngIf="t.status === 'OPEN' || t.status === 'IN_PROGRESS'" (click)="resolveTicket(t.serviceRequestId)">
+                <i class="bi bi-check-lg"></i> Resolve
+              </button>
+              <button class="btn btn-sm btn-outline-secondary ms-1" *ngIf="t.status === 'RESOLVED'" (click)="closeTicket(t.serviceRequestId)">
+                <i class="bi bi-lock-fill"></i> Close
+              </button>
+              <span class="text-muted small" *ngIf="t.status === 'CLOSED'">Closed</span>
+            </td>
+          </tr>
+          <tr *ngIf="tickets.length === 0">
+            <td colspan="6" class="text-center py-4 text-muted">No tickets found in the queue.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,11 @@
+.bg-gradient-transfer {
+  background: linear-gradient(135deg, #0A192F 0%, #002D62 50%, #007CC3 100%);
+}
+
+.card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.x-small {
+  font-size: 0.8rem;
+}

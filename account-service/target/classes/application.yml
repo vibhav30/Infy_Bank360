@@ -1,0 +1,156 @@
+# =============================================================================
+# Infy_Bank360 Platform — Account Lifecycle & Balance Microservice
+# Service: account-service | Port: 8200 | Base Package: com.infy.bank360.account
+# Database: infy_bank360_db (MySQL 8.0) | Service Discovery: Consul (Port 8500)
+# =============================================================================
+
+server:
+  port: 8083
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: account-service
+
+  # ---------------------------------------------------------------------------
+  # Relational Database Datasource (MySQL 8.0 & HikariCP Pool)
+  # ---------------------------------------------------------------------------
+  datasource:
+    url: jdbc:mysql://localhost:3306/infy_bank360_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+    username: root
+    password: password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: InfyAccountHikariCP
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 20000
+
+  # ---------------------------------------------------------------------------
+  # Spring Data JPA & Hibernate Configuration
+  # ---------------------------------------------------------------------------
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          batch_size: 25
+
+  # ---------------------------------------------------------------------------
+  # Spring Cloud Consul — Service Discovery & Configuration
+  # ---------------------------------------------------------------------------
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        enabled: true
+        register: true
+        instance-id: ${spring.application.name}:${random.value}
+        service-name: ${spring.application.name}
+        prefer-ip-address: true
+        health-check-path: /actuator/health
+        health-check-interval: 10s
+        health-check-critical-timeout: 30s
+      config:
+        enabled: true
+        format: YAML
+        prefix: config
+        default-context: application
+        data-key: data
+        fail-fast: false
+
+    # -------------------------------------------------------------------------
+    # OpenFeign Declarative Inter-Service RPC & LoadBalancer Settings
+    # -------------------------------------------------------------------------
+    openfeign:
+      circuitbreaker:
+        enabled: true
+        alphanumeric-ids:
+          enabled: true
+      client:
+        config:
+          default:
+            connect-timeout: 3000
+            read-timeout: 5000
+            logger-level: FULL
+
+# -----------------------------------------------------------------------------
+# Resilience4j Enterprise Fault Tolerance Configurations
+# -----------------------------------------------------------------------------
+resilience4j:
+  circuitbreaker:
+    instances:
+      customerService:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 70
+        slow-call-duration-threshold: 2s
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true
+
+  retry:
+    instances:
+      customerService:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+
+  ratelimiter:
+    instances:
+      accountRateLimiter:
+        limit-for-period: 50
+        limit-refresh-period: 1s
+        timeout-duration: 500ms
+
+# -----------------------------------------------------------------------------
+# Spring Boot Actuator Observability & Endpoint Exposure
+# -----------------------------------------------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: 1.0
+
+# -----------------------------------------------------------------------------
+# Structured Logging with MDC Correlation
+# -----------------------------------------------------------------------------
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+  level:
+    root: INFO
+    com.infy.bank360: DEBUG
+    org.springframework.cloud.consul: INFO
+    org.hibernate.SQL: DEBUG

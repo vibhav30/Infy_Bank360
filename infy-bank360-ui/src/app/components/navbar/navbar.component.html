@@ -1,0 +1,60 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-navy shadow-sm sticky-top">
+  <div class="container-fluid px-lg-4">
+    <!-- Brand Logo -->
+    <a class="navbar-brand d-flex align-items-center fw-bold" routerLink="/">
+      <div class="brand-icon rounded-3 p-2 me-2 d-flex align-items-center justify-content-center bg-primary text-white">
+        <i class="bi bi-bank2 fs-5"></i>
+      </div>
+      <div>
+        <span class="fs-5 text-white tracking-wide">Infy_Bank</span><span class="text-info fs-5">360</span>
+        <span class="badge bg-info-subtle text-info-emphasis ms-2 x-small">8 Microservices</span>
+      </div>
+    </a>
+
+    <!-- Mobile Toggler -->
+    <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#bankNav" aria-controls="bankNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Nav Links (All 6 Functional Modules covering US-01 through US-19) -->
+    <div class="collapse navbar-collapse" id="bankNav">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center gap-1">
+        <li class="nav-item">
+          <a class="nav-link px-2" routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            <i class="bi bi-speedometer2 me-1"></i> Dashboard
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link px-2" routerLink="/onboard" routerLinkActive="active">
+            <i class="bi bi-person-plus-fill me-1"></i> KYC Onboarding
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link px-2" routerLink="/transfer" routerLinkActive="active">
+            <i class="bi bi-send-fill me-1"></i> Transfers & Bills
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link px-2" routerLink="/loans" routerLinkActive="active">
+            <i class="bi bi-wallet2 me-1"></i> Loans & EMI
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link px-2" routerLink="/helpdesk" routerLinkActive="active">
+            <i class="bi bi-headset me-1"></i> Helpdesk
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link px-2" routerLink="/compliance" routerLinkActive="active">
+            <i class="bi bi-shield-check me-1"></i> Compliance
+          </a>
+        </li>
+        <li class="nav-item ms-lg-2">
+          <span class="badge bg-success bg-opacity-25 text-success-emphasis border border-success-subtle px-3 py-2 rounded-pill d-flex align-items-center small">
+            <i class="bi bi-broadcast me-1 text-success"></i> Gateway: 8080
+          </span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>

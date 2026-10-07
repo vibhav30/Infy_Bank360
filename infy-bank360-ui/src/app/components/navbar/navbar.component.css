@@ -1,0 +1,39 @@
+.bg-navy {
+  background-color: #0b1a30;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.brand-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #0d6efd 0%, #00b4d8 100%) !important;
+  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.35);
+}
+
+.nav-link {
+  color: #adb5bd !important;
+  font-weight: 500;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  transition: all 0.2s ease-in-out;
+}
+
+.nav-link:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.nav-link.active {
+  color: #38bdf8 !important;
+  background-color: rgba(56, 189, 248, 0.12);
+  font-weight: 600;
+}
+
+.tracking-wide {
+  letter-spacing: 0.5px;
+}
+
+.x-small {
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+}

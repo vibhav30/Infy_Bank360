@@ -1,0 +1,191 @@
+<div class="container py-4">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+      <h2 class="fw-bold mb-1"><i class="bi bi-wallet2 text-primary me-2"></i>Loan Origination & EMI Simulator</h2>
+      <p class="text-secondary mb-0">Module 4: Mathematical EMI engine, digital underwriting, and instant disbursal (US-11, US-12, US-13)</p>
+    </div>
+    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill">
+      Port 8085: loan-service
+    </span>
+  </div>
+
+  <!-- Alert Banner -->
+  <div *ngIf="alertMessage" [class]="'alert alert-' + alertType + ' alert-dismissible fade show shadow-sm'" role="alert">
+    <i class="bi bi-info-circle me-2"></i>{{ alertMessage }}
+    <button type="button" class="btn-close" (click)="alertMessage = null"></button>
+  </div>
+
+  <div *ngIf="dtiWarning" class="alert alert-warning shadow-sm">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Underwriting Flag: </strong>{{ dtiWarning }}
+  </div>
+
+  <div class="row g-4 mb-4">
+    <!-- 1. Interactive EMI Calculator -->
+    <div class="col-lg-6">
+      <div class="card h-100 shadow-sm border-0 bg-white">
+        <div class="card-header bg-navy text-white py-3">
+          <h5 class="mb-0 fw-semibold"><i class="bi bi-calculator me-2 text-info"></i>1. Reducing-Balance EMI Simulator (US-11)</h5>
+        </div>
+        <div class="card-body p-4">
+          <form (ngSubmit)="calculateEmi()">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Loan Product Type</label>
+              <select class="form-select" [(ngModel)]="calculator.loanType" name="calcType" (change)="onTypeChange()">
+                <option value="PERSONAL">Personal Loan (11.5% APR)</option>
+                <option value="HOME">Home Mortgage Loan (8.5% APR)</option>
+                <option value="VEHICLE">Vehicle Auto Loan (9.75% APR)</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <div class="d-flex justify-content-between">
+                <label class="form-label fw-semibold">Principal Amount ($)</label>
+                <span class="fw-bold text-primary">${{ calculator.principalAmount | number:'1.2-2' }}</span>
+              </div>
+              <input type="range" class="form-range" min="1000" max="2500000" step="5000" [(ngModel)]="calculator.principalAmount" name="calcPrincipal" (input)="calculateEmi()">
+            </div>
+
+            <div class="mb-4">
+              <div class="d-flex justify-content-between">
+                <label class="form-label fw-semibold">Tenure (Months)</label>
+                <span class="fw-bold text-primary">{{ calculator.tenureMonths }} Months ({{ (calculator.tenureMonths / 12) | number:'1.1-1' }} Yrs)</span>
+              </div>
+              <input type="range" class="form-range" min="12" max="120" step="6" [(ngModel)]="calculator.tenureMonths" name="calcTenure" (input)="calculateEmi()">
+            </div>
+
+            <!-- Calculation Output Card -->
+            <div class="p-3 bg-light rounded-3 border text-center">
+              <div class="small text-muted text-uppercase tracking-wider">Estimated Monthly EMI</div>
+              <div class="display-6 fw-bold text-success my-2">${{ calculator.monthlyEmi | number:'1.2-2' }}</div>
+              <div class="row mt-3 pt-2 border-top g-2 small">
+                <div class="col-6">
+                  <span class="text-muted">Total Interest: </span>
+                  <span class="fw-semibold text-danger">${{ calculator.totalInterest | number:'1.2-2' }}</span>
+                </div>
+                <div class="col-6">
+                  <span class="text-muted">Total Repayment: </span>
+                  <span class="fw-semibold text-dark">${{ calculator.totalRepayment | number:'1.2-2' }}</span>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Loan Application Form -->
+    <div class="col-lg-6">
+      <div class="card h-100 shadow-sm border-0 bg-white">
+        <div class="card-header bg-navy text-white py-3">
+          <h5 class="mb-0 fw-semibold"><i class="bi bi-file-earmark-text me-2 text-info"></i>2. Digital Loan Application (US-12)</h5>
+        </div>
+        <div class="card-body p-4">
+          <form (ngSubmit)="applyLoan()">
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Customer ID (CIF)</label>
+                <input type="number" class="form-control" [(ngModel)]="application.customerId" name="appCustId" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Disbursal Account</label>
+                <input type="text" class="form-control" [(ngModel)]="application.accountNumber" name="appAccount" placeholder="12-digit Account">
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Loan Type</label>
+                <select class="form-select" [(ngModel)]="application.loanType" name="appType">
+                  <option value="PERSONAL">Personal</option>
+                  <option value="HOME">Home</option>
+                  <option value="VEHICLE">Vehicle</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Declared Monthly Income ($)</label>
+                <input type="number" class="form-control" [(ngModel)]="application.monthlyIncome" name="appIncome" min="500" required>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Principal Requested ($)</label>
+                <input type="number" class="form-control" [(ngModel)]="application.principalAmount" name="appPrincipal" min="1000" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Tenure (12–120 Mos)</label>
+                <input type="number" class="form-control" [(ngModel)]="application.tenureMonths" name="appTenure" min="12" max="120" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold shadow-sm">
+              <i class="bi bi-send-check me-2"></i>Submit Application for Review
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Officer Underwriting & Disbursal Queue -->
+  <div class="card shadow-sm border-0 bg-white">
+    <div class="card-header bg-navy text-white py-3 d-flex justify-content-between align-items-center">
+      <h5 class="mb-0 fw-semibold"><i class="bi bi-check2-circle me-2 text-info"></i>3. Underwriting & Disbursal Queue (US-13)</h5>
+      <button class="btn btn-sm btn-outline-light" (click)="loadCustomerLoans()">
+        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+      </button>
+    </div>
+    <div class="card-body p-0 table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Loan ID</th>
+            <th>Type</th>
+            <th>Principal</th>
+            <th>Tenure</th>
+            <th>Monthly EMI</th>
+            <th>Income</th>
+            <th>Status</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let loan of pendingLoans">
+            <td class="fw-bold">#{{ loan.loanId }}</td>
+            <td><span class="badge bg-secondary-subtle text-secondary-emphasis">{{ loan.loanType }}</span></td>
+            <td class="fw-semibold">${{ loan.principalAmount | number:'1.2-2' }}</td>
+            <td>{{ loan.tenureMonths }} mos</td>
+            <td class="fw-semibold text-primary">${{ loan.monthlyEmi | number:'1.2-2' }}</td>
+            <td>${{ loan.monthlyIncome | number:'1.2-2' }}</td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'bg-warning-subtle text-warning-emphasis': loan.status === 'APPLIED',
+                'bg-info-subtle text-info-emphasis': loan.status === 'APPROVED',
+                'bg-success-subtle text-success-emphasis': loan.status === 'DISBURSED',
+                'bg-danger-subtle text-danger-emphasis': loan.status === 'REJECTED'
+              }">{{ loan.status }}</span>
+            </td>
+            <td class="text-end">
+              <div class="btn-group btn-group-sm" *ngIf="loan.status === 'APPLIED'">
+                <button class="btn btn-success" (click)="underwrite(loan.loanId, 'APPROVED')">
+                  <i class="bi bi-check"></i> Approve
+                </button>
+                <button class="btn btn-danger" (click)="underwrite(loan.loanId, 'REJECTED')">
+                  <i class="bi bi-x"></i> Reject
+                </button>
+              </div>
+              <button class="btn btn-sm btn-primary" *ngIf="loan.status === 'APPROVED'" (click)="disburse(loan.loanId, loan.accountNumber || '100000000001')">
+                <i class="bi bi-cash-coin me-1"></i> Disburse
+              </button>
+              <span class="text-muted small" *ngIf="loan.status === 'DISBURSED' || loan.status === 'REJECTED'">Settled</span>
+            </td>
+          </tr>
+          <tr *ngIf="pendingLoans.length === 0">
+            <td colspan="8" class="text-center py-4 text-muted">No loan applications found.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

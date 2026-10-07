@@ -1,0 +1,194 @@
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-md-10">
+
+      <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+        <!-- Header -->
+        <div class="card-header bg-gradient-transfer text-white p-4">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <span class="badge bg-white text-dark px-3 py-1 mb-2 fw-semibold">Instant Inter-Bank Transfer</span>
+              <h3 class="mb-1 fw-bold text-white">Transfer Funds</h3>
+              <p class="mb-0 text-white-50 small">Double-entry ledger transfer with real-time promotional discount computation</p>
+            </div>
+            <div class="rounded-circle bg-white bg-opacity-25 p-3 text-white">
+              <i class="bi bi-arrow-left-right fs-2"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body p-4 p-md-5">
+
+          <!-- Success Alert -->
+          <div *ngIf="successMessage" class="alert alert-success alert-dismissible fade show border-0 rounded-3 d-flex align-items-center" role="alert">
+            <i class="bi bi-check-circle-fill fs-4 me-3 text-success"></i>
+            <div class="flex-grow-1">
+              <strong>Transfer Successful!</strong>
+              <div class="small">{{ successMessage }}</div>
+              <div *ngIf="completedTransaction" class="mt-2 small text-muted">
+                Gross: <strong>{{ completedTransaction.grossAmount | currency:'USD':'symbol':'1.2-2' }}</strong> | 
+                Discount: <span class="badge bg-success-subtle text-success">-{{ completedTransaction.discount | currency:'USD':'symbol':'1.2-2' }}</span> | 
+                Net Debited: <strong>{{ completedTransaction.netAmount | currency:'USD':'symbol':'1.2-2' }}</strong>
+              </div>
+            </div>
+            <button type="button" class="btn-close" (click)="dismissAlert()" aria-label="Close"></button>
+          </div>
+
+          <!-- Error Alert (InfyBankException response) -->
+          <div *ngIf="errorMessage" class="alert alert-danger alert-dismissible fade show border-0 rounded-3 d-flex align-items-center" role="alert">
+            <i class="bi bi-shield-x fs-4 me-3 text-danger"></i>
+            <div class="flex-grow-1">
+              <strong>Transfer Rejected by Banking Core</strong>
+              <div class="small">{{ errorMessage }}</div>
+              <div class="mt-1 small text-muted">Reference: Spring Cloud Gateway &amp; Resilience4j Circuit Breaker Active</div>
+            </div>
+            <button type="button" class="btn-close" (click)="dismissAlert()" aria-label="Close"></button>
+          </div>
+
+          <!-- Form -->
+          <form [formGroup]="transferForm" (ngSubmit)="onSubmit()" novalidate>
+
+            <!-- Source Account Selector -->
+            <div class="mb-3">
+              <label for="sourceAccountNumber" class="form-label fw-semibold">
+                Debit Source Account <span class="text-danger">*</span>
+              </label>
+              <select
+                id="sourceAccountNumber"
+                class="form-select form-select-lg"
+                [ngClass]="{ 'is-invalid': f['sourceAccountNumber'].touched && f['sourceAccountNumber'].errors }"
+                formControlName="sourceAccountNumber"
+              >
+                <option value="" disabled>-- Select Active Account --</option>
+                <option *ngFor="let acc of accounts" [value]="acc.accountNumber">
+                  {{ acc.accountNumber }} ({{ acc.accountType }}) &mdash; Available Balance: {{ acc.balance | currency:'USD':'symbol':'1.2-2' }}
+                </option>
+              </select>
+              <div *ngIf="f['sourceAccountNumber'].touched && f['sourceAccountNumber'].errors" class="invalid-feedback">
+                Please select a source account.
+              </div>
+
+              <!-- Available Balance Indicator -->
+              <div *ngIf="selectedAccount" class="mt-2 p-2 bg-light rounded-3 d-flex justify-content-between align-items-center">
+                <span class="small text-muted">Available Debit Limit:</span>
+                <span class="fw-bold text-success">{{ selectedAccount.balance | currency:'USD':'symbol':'1.2-2' }}</span>
+              </div>
+            </div>
+
+            <!-- Destination Account Input -->
+            <div class="mb-3">
+              <label for="destinationAccountNumber" class="form-label fw-semibold">
+                Beneficiary Destination Account (12 Digits) <span class="text-danger">*</span>
+              </label>
+              <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-person-badge"></i></span>
+                <input
+                  type="text"
+                  id="destinationAccountNumber"
+                  maxlength="12"
+                  class="form-control border-start-0 font-monospace"
+                  [ngClass]="{ 'is-invalid': f['destinationAccountNumber'].touched && f['destinationAccountNumber'].errors }"
+                  formControlName="destinationAccountNumber"
+                  placeholder="e.g. 100000000003"
+                />
+                <div *ngIf="f['destinationAccountNumber'].touched && f['destinationAccountNumber'].errors" class="invalid-feedback">
+                  <div *ngIf="f['destinationAccountNumber'].errors?.['required']">Beneficiary account number is mandatory.</div>
+                  <div *ngIf="f['destinationAccountNumber'].errors?.['pattern']">Must be an exact 12-digit numeric account number.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Transfer Amount Input -->
+            <div class="mb-3">
+              <label for="amount" class="form-label fw-semibold">
+                Transfer Amount ($ USD) <span class="text-danger">*</span>
+              </label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text bg-light border-end-0 fw-bold">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  id="amount"
+                  class="form-control border-start-0 fw-bold fs-4"
+                  [ngClass]="{ 'is-invalid': (f['amount'].touched && f['amount'].errors) || hasInsufficientBalance }"
+                  formControlName="amount"
+                  placeholder="0.00"
+                />
+                <div *ngIf="f['amount'].touched && f['amount'].errors" class="invalid-feedback">
+                  <div *ngIf="f['amount'].errors?.['required']">Transfer amount is mandatory.</div>
+                  <div *ngIf="f['amount'].errors?.['min']">Amount must be strictly greater than zero (AC-TXN-01).</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dynamic Discount Check Display Card (> 500 Rule Display) -->
+            <div class="card border-0 mb-4 overflow-hidden" [ngClass]="isDiscountEligible ? 'bg-success-subtle border-success' : 'bg-light border-light-subtle'">
+              <div class="card-body p-3">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <div class="d-flex align-items-center">
+                    <i class="bi" [ngClass]="isDiscountEligible ? 'bi-gift-fill text-success fs-4 me-2' : 'bi-info-circle text-muted fs-5 me-2'"></i>
+                    <strong [ngClass]="isDiscountEligible ? 'text-success-emphasis' : 'text-dark'">
+                      {{ isDiscountEligible ? '5% Promotional Discount Engine Active!' : 'Promotional Discount Policy (BR-03 & BR-04)' }}
+                    </strong>
+                  </div>
+                  <span class="badge" [ngClass]="isDiscountEligible ? 'bg-success text-white' : 'bg-secondary'">
+                    {{ isDiscountEligible ? 'DISCOUNT APPLIED' : 'THRESHOLD: > $500.00' }}
+                  </span>
+                </div>
+
+                <div class="row g-2 pt-2 border-top border-secondary border-opacity-10 small">
+                  <div class="col-4">
+                    <span class="text-muted d-block">Gross Amount:</span>
+                    <strong class="fs-6">{{ grossAmount | currency:'USD':'symbol':'1.2-2' }}</strong>
+                  </div>
+                  <div class="col-4">
+                    <span class="text-muted d-block">Discount Savings:</span>
+                    <strong class="fs-6" [ngClass]="isDiscountEligible ? 'text-success' : 'text-muted'">
+                      -{{ discount | currency:'USD':'symbol':'1.2-2' }}
+                    </strong>
+                  </div>
+                  <div class="col-4">
+                    <span class="text-muted d-block">Net To Be Debited:</span>
+                    <strong class="fs-6 text-primary">{{ netAmount | currency:'USD':'symbol':'1.2-2' }}</strong>
+                  </div>
+                </div>
+
+                <div *ngIf="!isDiscountEligible && grossAmount > 0" class="mt-2 text-muted x-small">
+                  <i class="bi bi-lightbulb text-warning me-1"></i>
+                  Transfer more than <strong>$500.00</strong> to automatically unlock a <strong>5% instant cashback discount</strong>!
+                </div>
+              </div>
+            </div>
+
+            <!-- Insufficient Balance Warning Banner -->
+            <div *ngIf="hasInsufficientBalance" class="alert alert-warning border-0 rounded-3 mb-4 d-flex align-items-center">
+              <i class="bi bi-exclamation-octagon-fill fs-4 me-3 text-warning"></i>
+              <div>
+                <strong>Insufficient Available Funds</strong>
+                <div class="small">
+                  The calculated net debit amount (<strong>{{ netAmount | currency:'USD':'symbol':'1.2-2' }}</strong>) exceeds the available balance in your selected account (<strong>{{ selectedAccount?.balance | currency:'USD':'symbol':'1.2-2' }}</strong>).
+                </div>
+              </div>
+            </div>
+
+            <!-- Transfer Button -->
+            <div class="d-grid gap-2">
+              <button
+                type="submit"
+                class="btn btn-primary btn-lg fw-semibold shadow-sm d-flex align-items-center justify-content-center"
+                [disabled]="isSubmitting || hasInsufficientBalance || transferForm.invalid"
+              >
+                <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span>{{ isSubmitting ? 'Authorizing Double-Entry Transfer...' : 'Authorize Instant Transfer' }}</span>
+              </button>
+            </div>
+
+          </form>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

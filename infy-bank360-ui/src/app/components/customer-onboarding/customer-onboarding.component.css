@@ -1,0 +1,12 @@
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #0A192F 0%, #007CC3 100%);
+}
+
+.card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.input-group:focus-within {
+  box-shadow: 0 0 0 0.25rem rgba(0, 124, 195, 0.2);
+  border-radius: 0.375rem;
+}

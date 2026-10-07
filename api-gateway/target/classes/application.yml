@@ -1,0 +1,222 @@
+# =============================================================================
+# Infy_Bank360 Platform — Edge API Gateway Configuration
+# Service: api-gateway (Spring Cloud Gateway)
+# Port: 8080 | Base Package: com.infy.bank360.gateway
+# Reference: spec.md (AC-GW-01 to AC-GW-05) & plan.md (Section 5.2)
+# =============================================================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  # ---------------------------------------------------------------------------
+  # Spring Cloud Consul — Service Discovery & Registry Integration
+  # ---------------------------------------------------------------------------
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        enabled: true
+        register: true
+        instance-id: ${spring.application.name}:${random.value}
+        service-name: ${spring.application.name}
+        prefer-ip-address: true
+        health-check-path: /actuator/health
+        health-check-interval: 10s
+        health-check-critical-timeout: 30s
+      config:
+        enabled: false # Gateway is stateless; external KV configuration disabled
+
+    # -------------------------------------------------------------------------
+    # Spring Cloud Gateway — Dynamic Routing via Consul LoadBalancer (lb://)
+    # -------------------------------------------------------------------------
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      routes:
+        # Route 0: Authentication & Identity Service (Port 8081)
+        - id: auth-service-route
+          uri: lb://auth-service
+          predicates:
+            - Path=/infybank/auth/**
+          filters:
+            - AddRequestHeader=X-Forwarded-Prefix, /infybank/auth
+            - name: CircuitBreaker
+              args:
+                name: gatewayCircuitBreaker
+                fallbackUri: forward:/fallback/service-unavailable
+
+        # Route 1: Customer & KYC Management Service (Port 8082)
+        - id: customer-service-route
+          uri: lb://customer-service
+          predicates:
+            - Path=/infybank/customers/**
+          filters:
+            - AddRequestHeader=X-Forwarded-Prefix, /infybank/customers
+            - name: CircuitBreaker
+              args:
+                name: gatewayCircuitBreaker
+                fallbackUri: forward:/fallback/service-unavailable
+
+        # Route 2: Account Lifecycle & Balance Service (Port 8083)
+        - id: account-service-route
+          uri: lb://account-service
+          predicates:
+            - Path=/infybank/accounts/**
+          filters:
+            - AddRequestHeader=X-Forwarded-Prefix, /infybank/accounts
+            - name: CircuitBreaker
+              args:
+                name: gatewayCircuitBreaker
+                fallbackUri: forward:/fallback/service-unavailable
+
+        # Route 3: Fund Transfers, Bill Payments & Transactions (Port 8084)
+        - id: transaction-service-route
+          uri: lb://transaction-service
+          predicates:
+            - Path=/infybank/transactions/**
+          filters:
+            - AddRequestHeader=X-Forwarded-Prefix, /infybank/transactions
+            - name: CircuitBreaker
+              args:
+                name: gatewayCircuitBreaker
+                fallbackUri: forward:/fallback/service-unavailable
+
+        # Route 4: Loan Origination & EMI Calculator Service (Port 8085)
+        - id: loan-service-route
+          uri: lb://loan-service
+          predicates:
+            - Path=/infybank/loans/**
+          filters:
+            - AddRequestHeader=X-Forwarded-Prefix, /infybank/loans
+            - name: CircuitBreaker
+              args:
+                name: gatewayCircuitBreaker
+                fallbackUri: forward:/fallback/service-unavailable
+
+        # Route 5: Service Desk & Customer Support Requests (Port 8086)
+        - id: service-request-route
+          uri: lb://service-request-service
+          predicates:
+            - Path=/infybank/requests/**
+          filters:
+            - AddRequestHeader=X-Forwarded-Prefix, /infybank/requests
+            - name: CircuitBreaker
+              args:
+                name: gatewayCircuitBreaker
+                fallbackUri: forward:/fallback/service-unavailable
+
+        # Route 6: Audit Trail & Compliance AML Surveillance (Port 8087)
+        - id: audit-service-route
+          uri: lb://audit-notification-service
+          predicates:
+            - Path=/infybank/audit/**
+          filters:
+            - AddRequestHeader=X-Forwarded-Prefix, /infybank/audit
+            - name: CircuitBreaker
+              args:
+                name: gatewayCircuitBreaker
+                fallbackUri: forward:/fallback/service-unavailable
+
+        # Route 7: In-App Event Notifications (Port 8087)
+        - id: notification-service-route
+          uri: lb://audit-notification-service
+          predicates:
+            - Path=/infybank/notifications/**
+          filters:
+            - AddRequestHeader=X-Forwarded-Prefix, /infybank/notifications
+            - name: CircuitBreaker
+              args:
+                name: gatewayCircuitBreaker
+                fallbackUri: forward:/fallback/service-unavailable
+
+      # -----------------------------------------------------------------------
+      # Global Cross-Origin Resource Sharing (CORS) Policy for Angular 17 UI
+      # -----------------------------------------------------------------------
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:4200"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            exposedHeaders:
+              - "Authorization"
+              - "X-User-Id"
+              - "X-User-Roles"
+              - "Content-Disposition"
+            allowCredentials: true
+            maxAge: 3600
+
+# -----------------------------------------------------------------------------
+# Resilience4j Reactive Gateway Circuit Breaker Configuration
+# -----------------------------------------------------------------------------
+resilience4j:
+  circuitbreaker:
+    instances:
+      gatewayCircuitBreaker:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 70
+        slow-call-duration-threshold: 2s
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true
+  timelimiter:
+    instances:
+      gatewayCircuitBreaker:
+        timeout-duration: 3s
+
+# -----------------------------------------------------------------------------
+# Spring Boot Actuator Observability & Endpoint Exposure
+# -----------------------------------------------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus, gateway
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    gateway:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  tracing:
+    sampling:
+      probability: 1.0
+
+# -----------------------------------------------------------------------------
+# Logging with W3C Distributed Trace and Span Correlation
+# -----------------------------------------------------------------------------
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: INFO
+    org.springframework.cloud.consul: INFO
+    io.github.resilience4j: INFO

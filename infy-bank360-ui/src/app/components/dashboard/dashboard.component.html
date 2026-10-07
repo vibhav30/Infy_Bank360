@@ -1,0 +1,221 @@
+<div class="container py-4">
+
+  <!-- Top Hero Greeting -->
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 pb-2 border-bottom">
+    <div>
+      <h2 class="fw-bold mb-1 text-dark">
+        Welcome Back, {{ selectedCustomer?.fullName || 'Retail Customer' }}
+      </h2>
+      <p class="text-muted mb-0 small">
+        CIF ID: <span class="badge bg-light text-dark border">#{{ selectedCustomer?.customerId || '1' }}</span> | 
+        National ID: <code>{{ selectedCustomer?.nationalId || 'IND10982345' }}</code>
+      </p>
+    </div>
+    <div class="d-flex gap-2 mt-3 mt-md-0">
+      <button class="btn btn-outline-secondary btn-sm d-flex align-items-center" (click)="loadDashboardData()">
+        <i class="bi bi-arrow-clockwise me-1" [class.spin]="isLoading"></i> Refresh
+      </button>
+      <a routerLink="/transfer" class="btn btn-primary btn-sm fw-semibold shadow-sm">
+        <i class="bi bi-send-fill me-1"></i> Quick Transfer
+      </a>
+    </div>
+  </div>
+
+  <!-- Metric Statistics Cards Grid -->
+  <div class="row g-3 mb-4">
+    <!-- Card 1: Total Net Portfolio Balance -->
+    <div class="col-sm-6 col-lg-3">
+      <div class="card border-0 shadow-sm rounded-4 h-100 metric-card bg-primary text-white">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small text-white-50 text-uppercase fw-semibold">Net Portfolio Balance</span>
+            <div class="rounded-circle bg-white bg-opacity-25 p-2 text-white">
+              <i class="bi bi-wallet2 fs-5"></i>
+            </div>
+          </div>
+          <h3 class="fw-bold mb-1">{{ getTotalBalance() | currency:'USD':'symbol':'1.2-2' }}</h3>
+          <span class="badge bg-success bg-opacity-75 text-white small">Liquid Assets Available</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: Active Deposit Accounts -->
+    <div class="col-sm-6 col-lg-3">
+      <div class="card border-0 shadow-sm rounded-4 h-100 metric-card bg-white">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small text-muted text-uppercase fw-semibold">Active Accounts</span>
+            <div class="rounded-circle bg-info bg-opacity-10 p-2 text-info">
+              <i class="bi bi-piggy-bank fs-5"></i>
+            </div>
+          </div>
+          <h3 class="fw-bold mb-1 text-dark">{{ getActiveAccountsCount() }} <small class="text-muted fs-6">Accounts</small></h3>
+          <span class="badge bg-info-subtle text-info-emphasis">Savings & Checking</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Digital KYC Status -->
+    <div class="col-sm-6 col-lg-3">
+      <div class="card border-0 shadow-sm rounded-4 h-100 metric-card bg-white">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small text-muted text-uppercase fw-semibold">KYC Verification</span>
+            <div class="rounded-circle bg-success bg-opacity-10 p-2 text-success">
+              <i class="bi bi-shield-check fs-5"></i>
+            </div>
+          </div>
+          <h4 class="fw-bold mb-1 text-success">{{ selectedCustomer?.kycStatus || 'KYC_VERIFIED' }}</h4>
+          <span class="badge bg-success-subtle text-success-emphasis">Onboarding Phase Cleared</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: Promotional Discounts Earned -->
+    <div class="col-sm-6 col-lg-3">
+      <div class="card border-0 shadow-sm rounded-4 h-100 metric-card bg-white">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small text-muted text-uppercase fw-semibold">Transfer Rewards</span>
+            <div class="rounded-circle bg-warning bg-opacity-10 p-2 text-warning">
+              <i class="bi bi-tag-fill fs-5"></i>
+            </div>
+          </div>
+          <h3 class="fw-bold mb-1 text-warning-emphasis">5% Discount</h3>
+          <span class="badge bg-warning-subtle text-warning-emphasis">> $500 Transfers Eligible</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accounts Section -->
+  <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+    <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+      <div class="d-flex align-items-center">
+        <i class="bi bi-bank text-primary fs-5 me-2"></i>
+        <h5 class="fw-bold mb-0 text-dark">Customer Deposit Accounts</h5>
+      </div>
+      <a routerLink="/transfer" class="btn btn-sm btn-outline-primary fw-semibold">
+        Transfer Between Accounts
+      </a>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light text-uppercase small text-muted">
+          <tr>
+            <th class="ps-4">Account Number</th>
+            <th>Type</th>
+            <th>Balance</th>
+            <th>Status</th>
+            <th class="text-end pe-4">Quick Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let acc of accounts">
+            <td class="ps-4">
+              <span class="font-monospace fw-bold text-dark">{{ acc.accountNumber }}</span>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="acc.accountType === 'SAVINGS' ? 'bg-primary-subtle text-primary' : 'bg-secondary-subtle text-secondary'">
+                {{ acc.accountType }}
+              </span>
+            </td>
+            <td>
+              <span class="fw-bold text-dark">{{ acc.balance | currency:'USD':'symbol':'1.2-2' }}</span>
+            </td>
+            <td>
+              <span class="badge" [ngClass]="{
+                'bg-success-subtle text-success': acc.status === 'ACTIVE',
+                'bg-warning-subtle text-warning': acc.status === 'FROZEN',
+                'bg-danger-subtle text-danger': acc.status === 'CLOSED'
+              }">
+                <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>{{ acc.status }}
+              </span>
+            </td>
+            <td class="text-end pe-4">
+              <button class="btn btn-sm btn-outline-secondary me-1" (click)="loadTransactions(acc.accountNumber)">
+                <i class="bi bi-clock-history me-1"></i> Statements
+              </button>
+              <a [routerLink]="['/transfer']" [queryParams]="{ source: acc.accountNumber }" class="btn btn-sm btn-light text-primary">
+                Send <i class="bi bi-arrow-right"></i>
+              </a>
+            </td>
+          </tr>
+          <tr *ngIf="accounts.length === 0 && !isLoading">
+            <td colspan="5" class="text-center py-4 text-muted">
+              No deposit accounts registered for this profile yet.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent Transaction Ledger Table -->
+  <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+    <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+      <div class="d-flex align-items-center">
+        <i class="bi bi-receipt text-primary fs-5 me-2"></i>
+        <h5 class="fw-bold mb-0 text-dark">Recent Ledger Transactions</h5>
+      </div>
+      <span class="badge bg-light text-secondary border">Real-Time Double-Entry Audit</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light text-uppercase small text-muted">
+          <tr>
+            <th class="ps-4">Date & Time</th>
+            <th>Type</th>
+            <th>Account Route</th>
+            <th>Gross Amount</th>
+            <th>Promotional Discount</th>
+            <th>Net Debited</th>
+            <th class="text-end pe-4">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let txn of transactions">
+            <td class="ps-4 small text-muted">
+              {{ txn.transactionDate | date:'medium' }}
+            </td>
+            <td>
+              <span class="badge" [ngClass]="txn.transactionType === 'TRANSFER' ? 'bg-info-subtle text-info-emphasis' : 'bg-primary-subtle text-primary'">
+                {{ txn.transactionType }}
+              </span>
+            </td>
+            <td class="small font-monospace">
+              <span>{{ txn.sourceAccountNumber }}</span>
+              <span *ngIf="txn.destinationAccountNumber" class="text-muted"> &rarr; {{ txn.destinationAccountNumber }}</span>
+              <span *ngIf="!txn.destinationAccountNumber" class="text-muted"> (Biller)</span>
+            </td>
+            <td class="fw-semibold">
+              {{ txn.grossAmount | currency:'USD':'symbol':'1.2-2' }}
+            </td>
+            <td>
+              <span *ngIf="txn.discount > 0" class="badge bg-success-subtle text-success fw-bold">
+                -{{ txn.discount | currency:'USD':'symbol':'1.2-2' }} (5%)
+              </span>
+              <span *ngIf="txn.discount === 0" class="text-muted small">$0.00</span>
+            </td>
+            <td class="fw-bold text-dark">
+              {{ txn.netAmount | currency:'USD':'symbol':'1.2-2' }}
+            </td>
+            <td class="text-end pe-4">
+              <span class="badge" [ngClass]="txn.status === 'SUCCESS' ? 'bg-success text-white' : 'bg-danger text-white'">
+                {{ txn.status }}
+              </span>
+            </td>
+          </tr>
+          <tr *ngIf="transactions.length === 0 && !isLoading">
+            <td colspan="7" class="text-center py-4 text-muted">
+              No recent transactions recorded for this account.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>

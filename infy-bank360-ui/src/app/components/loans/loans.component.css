@@ -1,0 +1,11 @@
+.bg-navy {
+  background-color: #0f172a;
+}
+
+.tracking-wider {
+  letter-spacing: 0.05em;
+}
+
+.form-range::-webkit-slider-thumb {
+  background-color: #2563eb;
+}
